@@ -14,12 +14,12 @@ Rules:
 - Do NOT include markdown.
 - Do NOT include extra commentary.
 - Only answer within the domain of "${domain}".
-- If the question is unrelated to "${domain}", respond with:
+- If unrelated, return:
 {
   "error": "Question is outside the current learning module."
 }
 
-Return JSON in exactly this format:
+Return JSON in this format:
 
 {
   "title": "",
@@ -38,11 +38,20 @@ Return JSON in exactly this format:
     });
 
     const rawText = response.text;
-    
+
+    console.log("\n--- GEMINI RAW RESPONSE ---");
+    console.log(rawText);
+    console.log("---------------------------\n");
+
     try {
-      return JSON.parse(rawText);
+      const parsed = JSON.parse(rawText);
+
+      console.log("Parsed Gemini JSON:", parsed);
+
+      return parsed;
     } catch (parseError) {
-      console.error("JSON Parse Failed. Raw Response:", rawText);
+      console.error("JSON Parse Failed. Raw Response:");
+      console.error(rawText);
 
       return {
         title: "Response Formatting Error",
@@ -53,6 +62,6 @@ Return JSON in exactly this format:
 
   } catch (error) {
     console.error("Gemini Service Error:", error);
-    throw new Error("Failed to generate AI response.");
+    throw error;
   }
 };

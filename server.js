@@ -8,13 +8,19 @@ import chatRoutes from "./src/routes/chatRoutes.js";
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
+
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  windowMs: 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
+
 app.use(limiter);
 
 app.use("/api/chat", chatRoutes);
