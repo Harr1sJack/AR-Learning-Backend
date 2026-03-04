@@ -5,6 +5,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { requestLogger } from "./src/middleware/logger.js";
 import chatRoutes from "./src/routes/chatRoutes.js";
+import visionRoutes from "./src/routes/visionRoutes.js";
 
 const app = express();
 
@@ -22,7 +23,7 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
-
+app.use("/api/vision", visionRoutes);
 app.use("/api/chat", chatRoutes);
 
 app.get("/", (req, res) => {
