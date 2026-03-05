@@ -72,13 +72,11 @@ Example:
 
   try {
 
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    const jsonMatch = rawText.match(/\{[\s\S]*?\}/);
 
-    if (jsonMatch) {
-      parsed = JSON.parse(jsonMatch[0]);
-    } else {
-      throw new Error("No JSON found");
-    }
+    if (!jsonMatch) throw new Error("No JSON detected");
+
+    parsed = JSON.parse(jsonMatch[0]);
 
   } catch (error) {
 
@@ -90,7 +88,7 @@ Example:
     };
   }
 
-  const label = parsed.label;
+  const label = parsed.label || "Unknown Concept";
 
   if (label === "Unsupported Content") {
     return {
@@ -100,7 +98,7 @@ Example:
     };
   }
 
-  // Clean label for searching
+  // Clean label
   const searchQuery = label
     .replace(/diagram/gi, "")
     .replace(/chart/gi, "")
@@ -109,8 +107,8 @@ Example:
 
   const queries = [
     `${searchQuery} educational diagram`,
-    `${searchQuery}`,
-    `${searchQuery} diagram`
+    `${searchQuery} diagram`,
+    `${searchQuery}`
   ];
 
   let images = [];
@@ -123,11 +121,14 @@ Example:
     try {
 
       const response = await fetch(url);
+
+      if (!response.ok) continue;
+
       const data = await response.json();
 
       if (data.results && data.results.length > 0) {
 
-        images = data.results.slice(0,8).map(img => img.urls.small);
+        images = data.results.slice(0, 8).map(img => img.urls.small);
 
         console.log("Unsplash images found using query:", q);
 
@@ -141,10 +142,10 @@ Example:
     }
   }
 
-  // Fallback images if Unsplash fails
+  // fallback image if Unsplash fails
   if (images.length === 0) {
 
-    console.log("Unsplash returned no results, using fallback images");
+    console.log("Unsplash returned no results, using fallback");
 
     images = [
       "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Example.jpg/640px-Example.jpg"
