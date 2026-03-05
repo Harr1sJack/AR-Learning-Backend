@@ -16,18 +16,29 @@ export const analyzeImage = async (imageBuffer) => {
         parts: [
           {
             text: `
-You are an AI visual recognition system.
+You are an AI assistant for an educational AR learning platform.
 
-Identify the main subject of the image.
+Users will capture images from textbooks or educational diagrams.
 
-The image may contain:
-- real objects
-- educational diagrams
-- labeled illustrations
-- anatomy charts
-- printed images
+Allowed educational domains:
+- biology
+- anatomy
+- astronomy
+- physics
+- engineering diagrams
+- science illustrations
 
-Return ONLY JSON in this format:
+If the image is NOT educational (for example: people, animals, furniture, random objects),
+return this JSON:
+
+{
+ "label": "Unsupported Content",
+ "description": "The captured image does not appear to be educational material. Please scan a textbook diagram or learning content."
+}
+
+Otherwise identify the concept.
+
+Return ONLY JSON:
 
 {
  "label": "",
@@ -37,8 +48,8 @@ Return ONLY JSON in this format:
 Example:
 
 {
- "label": "Human Brain",
- "description": "The human brain is the central organ of the nervous system responsible for cognition, memory, and controlling body functions."
+ "label": "Solar System",
+ "description": "A diagram showing the Sun at the center with planets orbiting around it."
 }
 `
           },
@@ -53,13 +64,14 @@ Example:
     ],
   });
 
-  let parsed;
   const rawText = response.text;
 
-  console.log("Gemini raw response:");
-  console.log(rawText);
+  console.log("Gemini raw response:", rawText);
+
+  let parsed;
 
   try {
+
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
 
     if (jsonMatch) {
@@ -69,34 +81,79 @@ Example:
     }
 
   } catch (error) {
+
     console.error("JSON parse failed:", error);
 
     parsed = {
-      label: "Unknown Object",
-      description: "The object could not be identified clearly.",
+      label: "Unknown Concept",
+      description: "The educational concept could not be identified.",
     };
   }
 
   const label = parsed.label;
 
-  // Better search query
-  const searchQuery = `${label} educational diagram`;
+  if (label === "Unsupported Content") {
+    return {
+      label,
+      description: parsed.description,
+      images: [],
+    };
+  }
 
-  const unsplashURL =
-    `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&client_id=${process.env.UNSPLASH_ACCESS_KEY}&per_page=1`;
+  // Clean label for searching
+  const searchQuery = label
+    .replace(/diagram/gi, "")
+    .replace(/chart/gi, "")
+    .replace(/illustration/gi, "")
+    .trim();
 
-  const imageResponse = await fetch(unsplashURL);
-  const imageData = await imageResponse.json();
+  const queries = [
+    `${searchQuery} educational diagram`,
+    `${searchQuery}`,
+    `${searchQuery} diagram`
+  ];
 
-  let imageUrl = "";
+  let images = [];
 
-  if (imageData.results && imageData.results.length > 0) {
-    imageUrl = imageData.results[0].urls.regular;
+  for (const q of queries) {
+
+    const url =
+      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&client_id=${process.env.UNSPLASH_ACCESS_KEY}&per_page=8`;
+
+    try {
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.results && data.results.length > 0) {
+
+        images = data.results.slice(0,8).map(img => img.urls.small);
+
+        console.log("Unsplash images found using query:", q);
+
+        break;
+      }
+
+    } catch (err) {
+
+      console.error("Unsplash fetch error:", err);
+
+    }
+  }
+
+  // Fallback images if Unsplash fails
+  if (images.length === 0) {
+
+    console.log("Unsplash returned no results, using fallback images");
+
+    images = [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Example.jpg/640px-Example.jpg"
+    ];
   }
 
   return {
     label,
     description: parsed.description,
-    imageUrl,
+    images,
   };
 };
