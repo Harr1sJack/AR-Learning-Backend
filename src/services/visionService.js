@@ -8,7 +8,11 @@ export const analyzeImage = async (imageBuffer) => {
 
   const imageBase64 = imageBuffer.toString("base64");
 
-  const response = await ai.models.generateContent({
+  // -----------------------------
+  // STEP 1: IDENTIFY CONCEPT
+  // -----------------------------
+
+  const analysisResponse = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: [
       {
@@ -18,38 +22,18 @@ export const analyzeImage = async (imageBuffer) => {
             text: `
 You are an AI assistant for an educational AR learning platform.
 
-Users will capture images from textbooks or educational diagrams.
+Users capture images from textbooks or diagrams.
 
-Allowed educational domains:
-- biology
-- anatomy
-- astronomy
-- physics
-- engineering diagrams
-- science illustrations
-
-If the image is NOT educational (for example: people, animals, furniture, random objects),
-return this JSON:
-
+If NOT educational, return:
 {
  "label": "Unsupported Content",
- "description": "The captured image does not appear to be educational material. Please scan a textbook diagram or learning content."
+ "description": "Please scan educational material."
 }
 
-Otherwise identify the concept.
-
-Return ONLY JSON:
-
+Otherwise return:
 {
  "label": "",
  "description": ""
-}
-
-Example:
-
-{
- "label": "Solar System",
- "description": "A diagram showing the Sun at the center with planets orbiting around it."
 }
 `
           },
@@ -62,29 +46,17 @@ Example:
         ],
       },
     ],
+    config: { responseMimeType: "application/json" }
   });
-
-  const rawText = response.text;
-
-  console.log("Gemini raw response:", rawText);
 
   let parsed;
 
   try {
-
-    const jsonMatch = rawText.match(/\{[\s\S]*?\}/);
-
-    if (!jsonMatch) throw new Error("No JSON detected");
-
-    parsed = JSON.parse(jsonMatch[0]);
-
-  } catch (error) {
-
-    console.error("JSON parse failed:", error);
-
+    parsed = JSON.parse(analysisResponse.text);
+  } catch {
     parsed = {
       label: "Unknown Concept",
-      description: "The educational concept could not be identified.",
+      description: "The educational concept could not be identified."
     };
   }
 
@@ -94,59 +66,100 @@ Example:
     return {
       label,
       description: parsed.description,
-      images: [],
+      images: []
     };
   }
 
-  // Clean label
-  const searchQuery = label
-    .replace(/diagram/gi, "")
-    .replace(/chart/gi, "")
-    .replace(/illustration/gi, "")
-    .trim();
+  // -----------------------------
+  // STEP 2: GENERATE HERO DIAGRAM
+  // -----------------------------
 
-  const queries = [
-    `${searchQuery} educational diagram`,
-    `${searchQuery} diagram`,
-    `${searchQuery}`
-  ];
+  let generatedImage = null;
 
-  let images = [];
+  try {
 
-  for (const q of queries) {
+    const generationResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: [
+        {
+          role: "user",
+          parts: [{
+            text: `
+A professional textbook-style educational diagram of ${label}.
+Landscape orientation.
+1920x1080 resolution.
+White background.
+Clearly labeled parts.
+Minimalist scientific style.
+No artistic effects.
+`
+          }]
+        }
+      ],
+      config: {
+        responseModalities: ["IMAGE"]
+      }
+    });
 
-    const url =
-      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&client_id=${process.env.UNSPLASH_ACCESS_KEY}&per_page=8`;
+    const imagePart = generationResponse
+      ?.candidates?.[0]?.content?.parts
+      ?.find(p => p.inlineData);
 
-    try {
+    if (imagePart) {
+      generatedImage = `data:image/jpeg;base64,${imagePart.inlineData.data}`;
+    }
 
-      const response = await fetch(url);
+  } catch (err) {
+    console.error("Gemini image generation failed:", err);
+  }
 
-      if (!response.ok) continue;
+  // -----------------------------
+  // STEP 3: UNSPLASH REFERENCES
+  // -----------------------------
 
+  const cleanedLabel = label
+  .replace(/diagram/gi, "")
+  .replace(/chart/gi, "")
+  .replace(/illustration/gi, "")
+  .trim();
+
+  const refinedQuery = `${cleanedLabel} educational diagram`;
+
+  let referenceImages = [];
+
+  try {
+
+    const unsplashURL =
+      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(refinedQuery)}&client_id=${process.env.UNSPLASH_ACCESS_KEY}&per_page=5`;
+
+    const response = await fetch(unsplashURL);
+
+    if (response.ok) {
       const data = await response.json();
 
       if (data.results && data.results.length > 0) {
-
-        images = data.results.slice(0, 8).map(img => img.urls.small);
-
-        console.log("Unsplash images found using query:", q);
-
-        break;
+        referenceImages = data.results.map(img => img.urls.small);
       }
-
-    } catch (err) {
-
-      console.error("Unsplash fetch error:", err);
-
     }
+
+  } catch (err) {
+    console.error("Unsplash fetch failed:", err);
   }
 
-  // fallback image if Unsplash fails
+  // -----------------------------
+  // STEP 4: COMBINE IMAGES
+  // -----------------------------
+
+  let images = [];
+
+  if (generatedImage) {
+    images.push(generatedImage);   // Hero image first
+  }
+
+  images = images.concat(referenceImages);
+
+  // Final safety fallback
   if (images.length === 0) {
-
-    console.log("Unsplash returned no results, using fallback");
-
     images = [
       "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Example.jpg/640px-Example.jpg"
     ];
@@ -155,6 +168,6 @@ Example:
   return {
     label,
     description: parsed.description,
-    images,
+    images
   };
 };
