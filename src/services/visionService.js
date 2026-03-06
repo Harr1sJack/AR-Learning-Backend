@@ -124,13 +124,13 @@ No artistic effects.
   .trim();
 
   const refinedQuery = `${cleanedLabel} educational diagram`;
-
+  console.log("Unsplash Query:", refinedQuery);
   let referenceImages = [];
 
   try {
 
     const unsplashURL =
-      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(refinedQuery)}&client_id=${process.env.UNSPLASH_ACCESS_KEY}&per_page=5`;
+      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(refinedQuery)}&client_id=${process.env.UNSPLASH_ACCESS_KEY}&per_page=2`;
 
     const response = await fetch(unsplashURL);
 
