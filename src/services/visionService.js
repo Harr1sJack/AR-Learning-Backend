@@ -8,10 +8,6 @@ export const analyzeImage = async (imageBuffer) => {
 
   const imageBase64 = imageBuffer.toString("base64");
 
-  // -----------------------------
-  // STEP 1: IDENTIFY CONCEPT
-  // -----------------------------
-
   const analysisResponse = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: [
@@ -70,10 +66,6 @@ Otherwise return:
     };
   }
 
-  // -----------------------------
-  // STEP 2: GENERATE HERO DIAGRAM
-  // -----------------------------
-
   let generatedImage = null;
 
   try {
@@ -112,10 +104,6 @@ No artistic effects.
   } catch (err) {
     console.error("Gemini image generation failed:", err);
   }
-
-  // -----------------------------
-  // STEP 3: UNSPLASH REFERENCES
-  // -----------------------------
 
   const cleanedLabel = label
   .replace(/diagram/gi, "")

@@ -3,7 +3,6 @@ import "./src/config/env.js";
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import { requestLogger } from "./src/middleware/logger.js";
 import chatRoutes from "./src/routes/chatRoutes.js";
 import visionRoutes from "./src/routes/visionRoutes.js";
 
@@ -13,7 +12,6 @@ app.set("trust proxy", 1);
 
 app.use(cors());
 app.use(express.json());
-app.use(requestLogger);
 
 const limiter = rateLimit({
   windowMs: 60 * 1000,

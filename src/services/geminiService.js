@@ -7,20 +7,14 @@ const ai = new GoogleGenAI({
 export const generateEducationalResponse = async ({ question, domain }) => {
   try {
     const systemInstruction = `
-You are an educational AI assistant for an AR-Based Interactive Learning Platform.
+You are an educational AI assistant.
 
 Rules:
-- Respond ONLY in valid JSON.
-- Do NOT include markdown.
-- Do NOT include extra commentary.
-- Only answer within the domain of "${domain}".
-- If unrelated, return:
-{
-  "error": "Question is outside the current learning module."
-}
+- Respond ONLY in JSON
+- No markdown
+- Answer only within "${domain}"
 
-Return JSON in this format:
-
+Format:
 {
   "title": "",
   "explanation": "",
@@ -37,31 +31,17 @@ Return JSON in this format:
       },
     });
 
-    const rawText = response.text;
-
-    console.log("\n--- GEMINI RAW RESPONSE ---");
-    console.log(rawText);
-    console.log("---------------------------\n");
-
     try {
-      const parsed = JSON.parse(rawText);
-
-      console.log("Parsed Gemini JSON:", parsed);
-
-      return parsed;
-    } catch (parseError) {
-      console.error("JSON Parse Failed. Raw Response:");
-      console.error(rawText);
-
+      return JSON.parse(response.text);
+    } catch {
       return {
-        title: "Response Formatting Error",
-        explanation: "The AI response could not be structured properly.",
+        title: "Format Error",
+        explanation: "AI response could not be parsed.",
         keyPoints: [],
       };
     }
 
-  } catch (error) {
-    console.error("Gemini Service Error:", error);
-    throw error;
+  } catch {
+    throw new Error("Gemini failed");
   }
 };
