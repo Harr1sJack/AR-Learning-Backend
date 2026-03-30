@@ -1,6 +1,6 @@
 import { generateEducationalResponse } from "../services/geminiService.js";
 
-const allowedDomains = ["heart", "brain", "solar_system"];
+const allowedDomains = ["water_cycle", "brain", "solar_system", "lungs", "larynx"];
 
 export const handleChat = async (req, res) => {
   try {
