@@ -1,7 +1,7 @@
 import https from "https";
 
 const URL = "https://ar-learning-backend.onrender.com/";
-const INTERVAL = 1 * 60 * 1000; // 1 minute
+const INTERVAL = 5 * 60 * 1000; // 5 minute
 
 var interations = 0;
 
