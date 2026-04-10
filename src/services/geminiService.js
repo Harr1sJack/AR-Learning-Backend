@@ -41,7 +41,8 @@ Format:
       };
     }
 
-  } catch {
-    throw new Error("Gemini failed");
+  } catch(err) {
+    console.error("FULL GEMINI ERROR:", err);
+    throw err;
   }
 };
